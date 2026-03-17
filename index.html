@@ -2,35 +2,95 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Controle de Vigilantes - Login</title>
+  <title>Painel Vigilantes - Profissional</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin:20px; }
+    input, select, button { margin:5px 0; padding:5px; }
+    table, th, td { border:1px solid #000; border-collapse: collapse; padding:5px; }
+    th, td { text-align:left; }
+    .hidden { display:none; }
+    .section { margin-top:20px; }
+  </style>
 </head>
 <body>
-  <h1>Login Sistema Vigilantes</h1>
-  <form id="login-form">
+  <h1>Sistema de Vigilantes</h1>
+
+  <!-- Formulário de login -->
+  <form id="login-form" class="section">
+    <h2>Login</h2>
     <input type="email" id="email" placeholder="Email" required><br>
     <input type="password" id="password" placeholder="Senha" required><br>
     <button type="submit">Entrar</button>
   </form>
 
-  <div id="dashboard" style="display:none;">
+  <!-- Dashboard -->
+  <div id="dashboard" class="section hidden">
     <h2>Bem-vindo, <span id="user-name"></span></h2>
-    <div id="admin-panel" style="display:none;">
-      <h3>Painel do Administrador</h3>
-      <p>Aqui você pode adicionar e editar dados.</p>
-    </div>
-    <div id="viewer-panel">
-      <h3>Painel do Visualizador</h3>
-      <p>Você só pode visualizar os dados.</p>
-    </div>
     <button id="logout">Sair</button>
+
+    <!-- Admin painel -->
+    <div id="admin-panel" class="section hidden">
+      <h3>Painel do Administrador</h3>
+
+      <!-- Cadastro de usuário -->
+      <h4>Cadastrar Usuário</h4>
+      <form id="register-user-form">
+        <input type="email" id="new-email" placeholder="Email" required>
+        <input type="password" id="new-password" placeholder="Senha" required>
+        <select id="new-role" required>
+          <option value="" disabled selected>Selecione Role</option>
+          <option value="admin">Administrador</option>
+          <option value="viewer">Visualizador</option>
+        </select>
+        <button type="submit">Cadastrar Usuário</button>
+      </form>
+
+      <!-- Cadastro de vigilante -->
+      <h4>Adicionar Vigilante</h4>
+      <form id="add-vigilante-form">
+        <input type="text" id="nome" placeholder="Nome" required>
+        <input type="text" id="funcao" placeholder="Função" required>
+        <input type="text" id="turno" placeholder="Turno" required>
+        <button type="submit">Adicionar Vigilante</button>
+      </form>
+    </div>
+
+    <!-- Painel de visualização -->
+    <div id="viewer-panel" class="section">
+      <h3>Lista de Vigilantes</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Função</th>
+            <th>Turno</th>
+            <th id="acoes-col" class="hidden">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="vigilantes-list"></tbody>
+      </table>
+    </div>
   </div>
 
   <script type="module">
-    // 🔹 Import Firebase
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-analytics.js";
+    import { 
+      getAuth, 
+      signInWithEmailAndPassword, 
+      createUserWithEmailAndPassword, 
+      signOut, 
+      onAuthStateChanged 
+    } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
+    import { 
+      getFirestore, 
+      collection, 
+      addDoc, 
+      getDoc, 
+      doc, 
+      onSnapshot, 
+      updateDoc, 
+      deleteDoc 
+    } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
     // 🔹 Config Firebase
     const firebaseConfig = {
@@ -43,80 +103,147 @@
       measurementId: "G-MBPQXNVPDK"
     };
 
-    // 🔹 Inicializar Firebase
     const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // 🔹 Login
+    // 🔹 Elementos
     const loginForm = document.getElementById("login-form");
     const dashboard = document.getElementById("dashboard");
     const userName = document.getElementById("user-name");
     const adminPanel = document.getElementById("admin-panel");
     const viewerPanel = document.getElementById("viewer-panel");
     const logoutBtn = document.getElementById("logout");
+    const vigilantesList = document.getElementById("vigilantes-list");
+    const addForm = document.getElementById("add-vigilante-form");
+    const registerForm = document.getElementById("register-user-form");
+    const acoesCol = document.getElementById("acoes-col");
 
-    loginForm.addEventListener("submit", async (e) => {
+    let currentRole = "";
+
+    // 🔹 Login
+    loginForm.addEventListener("submit", async e => {
       e.preventDefault();
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
-
       try {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
-
-        // Buscar o tipo de usuário no Firestore
-        const docRef = doc(db, "users", user.uid);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          const role = docSnap.data().role; // "admin" ou "viewer"
-          showDashboard(user.email, role);
-        } else {
-          alert("Usuário não cadastrado no sistema!");
-        }
-
+        await loadUserRole(user.uid, user.email);
       } catch (error) {
-        console.error("Erro no login:", error.code, error.message);
-        alert(`Erro: ${error.message}`);
+        alert("Erro no login: " + error.message);
       }
     });
 
-    // 🔹 Mostrar dashboard conforme o tipo
+    // 🔹 Registrar usuário (somente admin)
+    registerForm.addEventListener("submit", async e => {
+      e.preventDefault();
+      const email = document.getElementById("new-email").value;
+      const password = document.getElementById("new-password").value;
+      const role = document.getElementById("new-role").value;
+
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const uid = userCredential.user.uid;
+        await addDoc(doc(db, "users", uid), { role }); // salvar role no Firestore
+        alert("Usuário cadastrado com sucesso!");
+        registerForm.reset();
+      } catch (error) {
+        alert("Erro ao cadastrar usuário: " + error.message);
+      }
+    });
+
+    // 🔹 Carregar role do usuário
+    async function loadUserRole(uid, email) {
+      const userDoc = await getDoc(doc(db, "users", uid));
+      if (!userDoc.exists()) {
+        alert("Usuário não cadastrado!");
+        return;
+      }
+      currentRole = userDoc.data().role;
+      showDashboard(email, currentRole);
+      loadVigilantes();
+    }
+
+    // 🔹 Mostrar dashboard
     function showDashboard(email, role) {
-      loginForm.style.display = "none";
-      dashboard.style.display = "block";
+      loginForm.classList.add("hidden");
+      dashboard.classList.remove("hidden");
       userName.textContent = email;
 
       if (role === "admin") {
-        adminPanel.style.display = "block";
-        viewerPanel.style.display = "block";
-      } else if (role === "viewer") {
-        adminPanel.style.display = "none";
-        viewerPanel.style.display = "block";
+        adminPanel.classList.remove("hidden");
+        acoesCol.classList.remove("hidden");
+      } else {
+        adminPanel.classList.add("hidden");
+        acoesCol.classList.add("hidden");
       }
     }
 
     // 🔹 Logout
     logoutBtn.addEventListener("click", () => {
       signOut(auth).then(() => {
-        dashboard.style.display = "none";
-        loginForm.style.display = "block";
+        dashboard.classList.add("hidden");
+        loginForm.classList.remove("hidden");
+        vigilantesList.innerHTML = "";
       });
     });
 
+    // 🔹 Adicionar vigilante
+    addForm.addEventListener("submit", async e => {
+      e.preventDefault();
+      const nome = document.getElementById("nome").value;
+      const funcao = document.getElementById("funcao").value;
+      const turno = document.getElementById("turno").value;
+      await addDoc(collection(db, "vigilantes"), { nome, funcao, turno });
+      addForm.reset();
+    });
+
+    // 🔹 Carregar vigilantes em tempo real
+    function loadVigilantes() {
+      const vigilantesCol = collection(db, "vigilantes");
+      onSnapshot(vigilantesCol, snapshot => {
+        vigilantesList.innerHTML = "";
+        snapshot.forEach(docu => {
+          const data = docu.data();
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${data.nome}</td>
+            <td>${data.funcao}</td>
+            <td>${data.turno}</td>
+            <td>${currentRole === "admin" ? `<button data-id="${docu.id}" class="edit">Editar</button> <button data-id="${docu.id}" class="delete">Excluir</button>` : ""}</td>
+          `;
+          vigilantesList.appendChild(tr);
+        });
+
+        document.querySelectorAll(".delete").forEach(btn => {
+          btn.addEventListener("click", async () => {
+            await deleteDoc(doc(db, "vigilantes", btn.dataset.id));
+          });
+        });
+
+        document.querySelectorAll(".edit").forEach(btn => {
+          btn.addEventListener("click", async () => {
+            const docRef = doc(db, "vigilantes", btn.dataset.id);
+            const docSnap = await getDoc(docRef);
+            const novoNome = prompt("Nome:", docSnap.data().nome);
+            const novaFuncao = prompt("Função:", docSnap.data().funcao);
+            const novoTurno = prompt("Turno:", docSnap.data().turno);
+            if (novoNome && novaFuncao && novoTurno) {
+              await updateDoc(docRef, { nome: novoNome, funcao: novaFuncao, turno: novoTurno });
+            }
+          });
+        });
+      });
+    }
+
     // 🔹 Detectar login automático
-    onAuthStateChanged(auth, async (user) => {
+    onAuthStateChanged(auth, async user => {
       if (user) {
-        const docRef = doc(db, "users", user.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const role = docSnap.data().role;
-          showDashboard(user.email, role);
-        }
+        await loadUserRole(user.uid, user.email);
       }
     });
+
   </script>
 </body>
 </html>
