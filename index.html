@@ -1,47 +1,149 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Vigilantes</title>
 
-<title>Controle de Vigilância</title>
-
-<link rel="stylesheet" href="style.css">
-
+<style>
+body { font-family: Arial; margin:0; background:#f4f6f8; }
+header { background:#2c3e50; color:#fff; padding:15px; text-align:center; }
+.container { padding:20px; }
+input, select { padding:8px; margin:5px; }
+button { padding:10px; margin:5px; cursor:pointer; }
+table { width:100%; border-collapse: collapse; background:#fff; }
+th, td { border:1px solid #ddd; padding:8px; text-align:center; }
+th { background:#34495e; color:white; }
+.hidden { display:none; }
+</style>
 </head>
 
 <body>
-
 <header>
-
-Sistema de Vigilância  
-Segurança Institucional
-
+<h2>Controle de Vigilantes</h2>
 </header>
 
-<div class="container">
+<div class="container" id="login">
+<h3>Login</h3>
+<input id="user" placeholder="Usuário">
+<input id="pass" type="password" placeholder="Senha">
+<button onclick="login()">Entrar</button>
+</div>
 
-<input id="busca" placeholder="Buscar vigilante ou cidade">
+<div class="container hidden" id="sistema">
+<h3>Cadastro de Vigilantes</h3>
 
-<table id="tabela">
+<input id="cidade" placeholder="Cidade">
+<input id="nucleo" placeholder="Núcleo">
+<input id="contrato" placeholder="Contrato">
+<input id="empresa" placeholder="Empresa">
+<input id="nome" placeholder="Vigilante">
+<input id="telefone" placeholder="Telefone">
 
+<button onclick="salvar()">Salvar</button>
+
+<h3>Consulta</h3>
+<input id="busca" placeholder="Buscar" onkeyup="filtrar()">
+
+<table>
 <thead>
 <tr>
 <th>Cidade</th>
+<th>Núcleo</th>
+<th>Contrato</th>
 <th>Empresa</th>
-<th>Vigilante</th>
-<th>Contato</th>
+<th>Nome</th>
+<th>Telefone</th>
 </tr>
 </thead>
-
-<tbody></tbody>
-
+<tbody id="tabela"></tbody>
 </table>
-
 </div>
 
-<script src="script.js"></script>
+<script>
+// usuários fixos (você controla aqui)
+const usuarios = [
+  {user:'admin', pass:'123', tipo:'admin'},
+  {user:'consulta', pass:'123', tipo:'consulta'}
+];
+
+let tipoAcesso = '';
+
+function login(){
+  let u = document.getElementById('user').value;
+  let p = document.getElementById('pass').value;
+
+  let achou = usuarios.find(x => x.user===u && x.pass===p);
+
+  if(achou){
+    tipoAcesso = achou.tipo;
+    document.getElementById('login').classList.add('hidden');
+    document.getElementById('sistema').classList.remove('hidden');
+
+    if(tipoAcesso === 'consulta'){
+      document.querySelector('button').style.display='none';
+    }
+
+    carregar();
+  } else {
+    alert('Login inválido');
+  }
+}
+
+function salvar(){
+  let dados = JSON.parse(localStorage.getItem('dados')) || [];
+
+  let novo = {
+    cidade: cidade.value,
+    nucleo: nucleo.value,
+    contrato: contrato.value,
+    empresa: empresa.value,
+    nome: nome.value,
+    telefone: telefone.value
+  };
+
+  dados.push(novo);
+  localStorage.setItem('dados', JSON.stringify(dados));
+
+  limpar();
+  carregar();
+}
+
+function carregar(){
+  let dados = JSON.parse(localStorage.getItem('dados')) || [];
+  let tabela = document.getElementById('tabela');
+  tabela.innerHTML='';
+
+  dados.forEach(d => {
+    tabela.innerHTML += `<tr>
+      <td>${d.cidade}</td>
+      <td>${d.nucleo}</td>
+      <td>${d.contrato}</td>
+      <td>${d.empresa}</td>
+      <td>${d.nome}</td>
+      <td><a href='tel:${d.telefone}'>${d.telefone}</a></td>
+    </tr>`;
+  });
+}
+
+function limpar(){
+  cidade.value='';
+  nucleo.value='';
+  contrato.value='';
+  empresa.value='';
+  nome.value='';
+  telefone.value='';
+}
+
+function filtrar(){
+  let valor = document.getElementById('busca').value.toLowerCase();
+  let linhas = document.querySelectorAll('#tabela tr');
+
+  linhas.forEach(l => {
+    l.style.display = l.innerText.toLowerCase().includes(valor) ? '' : 'none';
+  });
+}
+</script>
 
 </body>
 </html>
