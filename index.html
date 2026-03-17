@@ -6,31 +6,43 @@
 <title>Sistema de Vigilantes</title>
 
 <style>
-body { font-family: Arial; margin:0; background:#f4f6f8; }
-header { background:#2c3e50; color:#fff; padding:15px; text-align:center; }
-.container { padding:20px; }
-input, select { padding:8px; margin:5px; }
-button { padding:10px; margin:5px; cursor:pointer; }
+body { font-family: Arial; margin:0; background:#eef1f5; }
+header { background:#1f2d3d; color:#fff; padding:15px; text-align:center; }
+.container { padding:20px; max-width:1200px; margin:auto; }
+input { padding:10px; margin:5px; width:200px; }
+button { padding:10px 15px; margin:5px; cursor:pointer; background:#3498db; color:#fff; border:none; border-radius:5px; }
+button:hover { background:#2980b9; }
+
+.card { background:#fff; padding:15px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.1); margin-bottom:20px; }
+
 table { width:100%; border-collapse: collapse; background:#fff; }
-th, td { border:1px solid #ddd; padding:8px; text-align:center; }
-th { background:#34495e; color:white; }
+th, td { border:1px solid #ddd; padding:10px; text-align:center; }
+th { background:#2c3e50; color:white; }
+tr:nth-child(even){ background:#f2f2f2; }
+
 .hidden { display:none; }
 </style>
 </head>
 
 <body>
+
 <header>
-<h2>Controle de Vigilantes</h2>
+<h2>Sistema de Vigilância - Segurança Institucional</h2>
 </header>
 
 <div class="container" id="login">
+<div class="card">
 <h3>Login</h3>
 <input id="user" placeholder="Usuário">
 <input id="pass" type="password" placeholder="Senha">
+<br>
 <button onclick="login()">Entrar</button>
+</div>
 </div>
 
 <div class="container hidden" id="sistema">
+
+<div class="card" id="cadastroBox">
 <h3>Cadastro de Vigilantes</h3>
 
 <input id="cidade" placeholder="Cidade">
@@ -39,11 +51,13 @@ th { background:#34495e; color:white; }
 <input id="empresa" placeholder="Empresa">
 <input id="nome" placeholder="Vigilante">
 <input id="telefone" placeholder="Telefone">
-
+<br>
 <button onclick="salvar()">Salvar</button>
+</div>
 
+<div class="card">
 <h3>Consulta</h3>
-<input id="busca" placeholder="Buscar" onkeyup="filtrar()">
+<input id="busca" placeholder="Buscar vigilante ou cidade" onkeyup="filtrar()">
 
 <table>
 <thead>
@@ -52,16 +66,17 @@ th { background:#34495e; color:white; }
 <th>Núcleo</th>
 <th>Contrato</th>
 <th>Empresa</th>
-<th>Nome</th>
-<th>Telefone</th>
+<th>Vigilante</th>
+<th>Contato</th>
 </tr>
 </thead>
 <tbody id="tabela"></tbody>
 </table>
 </div>
 
+</div>
+
 <script>
-// usuários fixos (você controla aqui)
 const usuarios = [
   {user:'admin', pass:'123', tipo:'admin'},
   {user:'consulta', pass:'123', tipo:'consulta'}
@@ -70,18 +85,18 @@ const usuarios = [
 let tipoAcesso = '';
 
 function login(){
-  let u = document.getElementById('user').value;
-  let p = document.getElementById('pass').value;
+  let u = user.value;
+  let p = pass.value;
 
   let achou = usuarios.find(x => x.user===u && x.pass===p);
 
   if(achou){
     tipoAcesso = achou.tipo;
-    document.getElementById('login').classList.add('hidden');
-    document.getElementById('sistema').classList.remove('hidden');
+    login.style.display='none';
+    sistema.classList.remove('hidden');
 
     if(tipoAcesso === 'consulta'){
-      document.querySelector('button').style.display='none';
+      cadastroBox.style.display='none';
     }
 
     carregar();
@@ -111,7 +126,6 @@ function salvar(){
 
 function carregar(){
   let dados = JSON.parse(localStorage.getItem('dados')) || [];
-  let tabela = document.getElementById('tabela');
   tabela.innerHTML='';
 
   dados.forEach(d => {
@@ -136,7 +150,7 @@ function limpar(){
 }
 
 function filtrar(){
-  let valor = document.getElementById('busca').value.toLowerCase();
+  let valor = busca.value.toLowerCase();
   let linhas = document.querySelectorAll('#tabela tr');
 
   linhas.forEach(l => {
