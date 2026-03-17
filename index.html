@@ -9,7 +9,7 @@
 body { font-family: Arial; margin:0; background:#eef1f5; }
 header { background:#1f2d3d; color:#fff; padding:15px; text-align:center; }
 .container { padding:20px; max-width:1200px; margin:auto; }
-input { padding:10px; margin:5px; width:200px; }
+input, select { padding:10px; margin:5px; }
 button { padding:10px 15px; margin:5px; cursor:pointer; background:#3498db; color:#fff; border:none; border-radius:5px; }
 button:hover { background:#2980b9; }
 
@@ -21,6 +21,8 @@ th { background:#2c3e50; color:white; }
 tr:nth-child(even){ background:#f2f2f2; }
 
 .hidden { display:none; }
+.actions button { background:#e74c3c; }
+.actions button:hover { background:#c0392b; }
 </style>
 </head>
 
@@ -68,6 +70,7 @@ tr:nth-child(even){ background:#f2f2f2; }
 <th>Empresa</th>
 <th>Vigilante</th>
 <th>Contato</th>
+<th>Ações</th>
 </tr>
 </thead>
 <tbody id="tabela"></tbody>
@@ -83,6 +86,7 @@ const usuarios = [
 ];
 
 let tipoAcesso = '';
+let editIndex = null;
 
 function login(){
   let u = user.value;
@@ -117,7 +121,13 @@ function salvar(){
     telefone: telefone.value
   };
 
-  dados.push(novo);
+  if(editIndex !== null){
+    dados[editIndex] = novo;
+    editIndex = null;
+  } else {
+    dados.push(novo);
+  }
+
   localStorage.setItem('dados', JSON.stringify(dados));
 
   limpar();
@@ -128,7 +138,7 @@ function carregar(){
   let dados = JSON.parse(localStorage.getItem('dados')) || [];
   tabela.innerHTML='';
 
-  dados.forEach(d => {
+  dados.forEach((d, i) => {
     tabela.innerHTML += `<tr>
       <td>${d.cidade}</td>
       <td>${d.nucleo}</td>
@@ -136,8 +146,37 @@ function carregar(){
       <td>${d.empresa}</td>
       <td>${d.nome}</td>
       <td><a href='tel:${d.telefone}'>${d.telefone}</a></td>
+      <td class='actions'>
+        ${tipoAcesso === 'admin' ? `
+        <button onclick="editar(${i})">Editar</button>
+        <button onclick="excluir(${i})">Excluir</button>
+        ` : ''}
+      </td>
     </tr>`;
   });
+}
+
+function editar(i){
+  let dados = JSON.parse(localStorage.getItem('dados'));
+  let d = dados[i];
+
+  cidade.value = d.cidade;
+  nucleo.value = d.nucleo;
+  contrato.value = d.contrato;
+  empresa.value = d.empresa;
+  nome.value = d.nome;
+  telefone.value = d.telefone;
+
+  editIndex = i;
+}
+
+function excluir(i){
+  if(confirm('Deseja excluir?')){
+    let dados = JSON.parse(localStorage.getItem('dados'));
+    dados.splice(i,1);
+    localStorage.setItem('dados', JSON.stringify(dados));
+    carregar();
+  }
 }
 
 function limpar(){
