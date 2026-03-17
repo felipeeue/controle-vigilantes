@@ -1,126 +1,60 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>Sistema Vigilantes</title>
-
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-
-<style>
-body { font-family: Arial; background:#eef1f5; }
-.container { padding:20px; max-width:1000px; margin:auto; }
-input { padding:10px; margin:5px; }
-button { padding:10px; background:#3498db; color:#fff; border:none; }
-table { width:100%; border-collapse: collapse; background:#fff; }
-th, td { border:1px solid #ddd; padding:10px; }
-.hidden { display:none; }
-</style>
+  <meta charset="UTF-8">
+  <title>Login Vigilantes</title>
 </head>
-
 <body>
+  <h1>Login</h1>
+  <form id="login-form">
+    <input type="email" id="email" placeholder="Email" required><br>
+    <input type="password" id="password" placeholder="Senha" required><br>
+    <button type="submit">Entrar</button>
+  </form>
 
-<div class="container" id="login">
-<h3>Login</h3>
-<input id="email" placeholder="Email">
-<input id="senha" type="password" placeholder="Senha">
-<button onclick="logar()">Entrar</button>
-<button onclick="registrar()">Criar Conta</button>
-</div>
+  <script type="module">
+    // 1️⃣ Importar Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-analytics.js";
 
-<div class="container hidden" id="sistema">
-<h3>Cadastro</h3>
+    // 2️⃣ Configuração do Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyBAARdjzSUNEjs9_fSiDtnXu9LzOnVpLzQ",
+      authDomain: "controle-vigilantes.firebaseapp.com",
+      projectId: "controle-vigilantes",
+      storageBucket: "controle-vigilantes.firebasestorage.app",
+      messagingSenderId: "97498390450",
+      appId: "1:97498390450:web:6867a8e74dc40787ab8eab",
+      measurementId: "G-MBPQXNVPDK"
+    };
 
-<input id="cidade" placeholder="Cidade">
-<input id="nome" placeholder="Vigilante">
-<input id="telefone" placeholder="Telefone">
+    // 3️⃣ Inicializar Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const auth = getAuth(app);
 
-<button onclick="salvar()">Salvar</button>
+    // 4️⃣ Capturar formulário
+    const loginForm = document.getElementById("login-form");
 
-<h3>Dados</h3>
-<table>
-<thead>
-<tr>
-<th>Cidade</th>
-<th>Nome</th>
-<th>Telefone</th>
-</tr>
-</thead>
-<tbody id="tabela"></tbody>
-</table>
+    loginForm.addEventListener("submit", (e) => {
+      e.preventDefault(); // Evita reload da página
 
-<button onclick="logout()">Sair</button>
-</div>
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
 
-<script>
-const firebaseConfig = {
-  apiKey: "AIzaSyBAARdjzSUNEjs9_fSiDtnXu9LzOnVpLzQ",
-  authDomain: "controle-vigilantes.firebaseapp.com",
-  projectId: "controle-vigilantes",
-  storageBucket: "controle-vigilantes.firebasestorage.app",
-  messagingSenderId: "97498390450",
-  appId: "1:97498390450:web:6867a8e74dc40787ab8eab"
-};
-
-firebase.initializeApp(firebaseConfig);
-
-const auth = firebase.auth();
-const db = firebase.firestore();
-
-// REGISTRAR
-function registrar(){
-  auth.createUserWithEmailAndPassword(email.value, senha.value)
-  .then(()=>alert('Usuário criado'))
-  .catch(e=>alert(e.message));
-}
-
-// LOGIN
-function logar(){
-  auth.signInWithEmailAndPassword(email.value, senha.value)
-  .catch(e=>alert(e.message));
-}
-
-// CONTROLE DE SESSÃO
-auth.onAuthStateChanged(user => {
-  if(user){
-    login.style.display='none';
-    sistema.classList.remove('hidden');
-    carregar();
-  }
-});
-
-// SALVAR DADOS
-function salvar(){
-  db.collection("vigilantes").add({
-    cidade: cidade.value,
-    nome: nome.value,
-    telefone: telefone.value
-  });
-}
-
-// CARREGAR DADOS EM TEMPO REAL
-function carregar(){
-  db.collection("vigilantes").onSnapshot(snapshot => {
-    tabela.innerHTML='';
-    snapshot.forEach(doc => {
-      let d = doc.data();
-      tabela.innerHTML += `
-        <tr>
-        <td>${d.cidade}</td>
-        <td>${d.nome}</td>
-        <td>${d.telefone}</td>
-        </tr>`;
+      // 5️⃣ Login com email e senha
+      signInWithEmailAndPassword(auth, email, password)
+        .then((userCredential) => {
+          const user = userCredential.user;
+          alert(`Bem-vindo, ${user.email}!`);
+          console.log("Usuário logado:", user);
+        })
+        .catch((error) => {
+          console.error("Erro no login:", error.code, error.message);
+          alert(`Erro: ${error.message}`);
+        });
     });
-  });
-}
-
-// LOGOUT
-function logout(){
-  auth.signOut();
-  location.reload();
-}
-</script>
-
+  </script>
 </body>
 </html>
