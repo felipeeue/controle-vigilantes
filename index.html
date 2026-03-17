@@ -2,23 +2,37 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Login Vigilantes</title>
+  <title>Controle de Vigilantes - Login</title>
 </head>
 <body>
-  <h1>Login</h1>
+  <h1>Login Sistema Vigilantes</h1>
   <form id="login-form">
     <input type="email" id="email" placeholder="Email" required><br>
     <input type="password" id="password" placeholder="Senha" required><br>
     <button type="submit">Entrar</button>
   </form>
 
+  <div id="dashboard" style="display:none;">
+    <h2>Bem-vindo, <span id="user-name"></span></h2>
+    <div id="admin-panel" style="display:none;">
+      <h3>Painel do Administrador</h3>
+      <p>Aqui você pode adicionar e editar dados.</p>
+    </div>
+    <div id="viewer-panel">
+      <h3>Painel do Visualizador</h3>
+      <p>Você só pode visualizar os dados.</p>
+    </div>
+    <button id="logout">Sair</button>
+  </div>
+
   <script type="module">
-    // 1️⃣ Importar Firebase
+    // 🔹 Import Firebase
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-analytics.js";
 
-    // 2️⃣ Configuração do Firebase
+    // 🔹 Config Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyBAARdjzSUNEjs9_fSiDtnXu9LzOnVpLzQ",
       authDomain: "controle-vigilantes.firebaseapp.com",
@@ -29,31 +43,79 @@
       measurementId: "G-MBPQXNVPDK"
     };
 
-    // 3️⃣ Inicializar Firebase
+    // 🔹 Inicializar Firebase
     const app = initializeApp(firebaseConfig);
     const analytics = getAnalytics(app);
     const auth = getAuth(app);
+    const db = getFirestore(app);
 
-    // 4️⃣ Capturar formulário
+    // 🔹 Login
     const loginForm = document.getElementById("login-form");
+    const dashboard = document.getElementById("dashboard");
+    const userName = document.getElementById("user-name");
+    const adminPanel = document.getElementById("admin-panel");
+    const viewerPanel = document.getElementById("viewer-panel");
+    const logoutBtn = document.getElementById("logout");
 
-    loginForm.addEventListener("submit", (e) => {
-      e.preventDefault(); // Evita reload da página
-
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
 
-      // 5️⃣ Login com email e senha
-      signInWithEmailAndPassword(auth, email, password)
-        .then((userCredential) => {
-          const user = userCredential.user;
-          alert(`Bem-vindo, ${user.email}!`);
-          console.log("Usuário logado:", user);
-        })
-        .catch((error) => {
-          console.error("Erro no login:", error.code, error.message);
-          alert(`Erro: ${error.message}`);
-        });
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // Buscar o tipo de usuário no Firestore
+        const docRef = doc(db, "users", user.uid);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const role = docSnap.data().role; // "admin" ou "viewer"
+          showDashboard(user.email, role);
+        } else {
+          alert("Usuário não cadastrado no sistema!");
+        }
+
+      } catch (error) {
+        console.error("Erro no login:", error.code, error.message);
+        alert(`Erro: ${error.message}`);
+      }
+    });
+
+    // 🔹 Mostrar dashboard conforme o tipo
+    function showDashboard(email, role) {
+      loginForm.style.display = "none";
+      dashboard.style.display = "block";
+      userName.textContent = email;
+
+      if (role === "admin") {
+        adminPanel.style.display = "block";
+        viewerPanel.style.display = "block";
+      } else if (role === "viewer") {
+        adminPanel.style.display = "none";
+        viewerPanel.style.display = "block";
+      }
+    }
+
+    // 🔹 Logout
+    logoutBtn.addEventListener("click", () => {
+      signOut(auth).then(() => {
+        dashboard.style.display = "none";
+        loginForm.style.display = "block";
+      });
+    });
+
+    // 🔹 Detectar login automático
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const docRef = doc(db, "users", user.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const role = docSnap.data().role;
+          showDashboard(user.email, role);
+        }
+      }
     });
   </script>
 </body>
