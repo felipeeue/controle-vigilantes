@@ -2,199 +2,123 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sistema de Vigilantes</title>
+<title>Sistema Vigilantes</title>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
 <style>
-body { font-family: Arial; margin:0; background:#eef1f5; }
-header { background:#1f2d3d; color:#fff; padding:15px; text-align:center; }
-.container { padding:20px; max-width:1200px; margin:auto; }
-input, select { padding:10px; margin:5px; }
-button { padding:10px 15px; margin:5px; cursor:pointer; background:#3498db; color:#fff; border:none; border-radius:5px; }
-button:hover { background:#2980b9; }
-
-.card { background:#fff; padding:15px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.1); margin-bottom:20px; }
-
+body { font-family: Arial; background:#eef1f5; }
+.container { padding:20px; max-width:1000px; margin:auto; }
+input { padding:10px; margin:5px; }
+button { padding:10px; background:#3498db; color:#fff; border:none; }
 table { width:100%; border-collapse: collapse; background:#fff; }
-th, td { border:1px solid #ddd; padding:10px; text-align:center; }
-th { background:#2c3e50; color:white; }
-tr:nth-child(even){ background:#f2f2f2; }
-
+th, td { border:1px solid #ddd; padding:10px; }
 .hidden { display:none; }
-.actions button { background:#e74c3c; }
-.actions button:hover { background:#c0392b; }
 </style>
 </head>
 
 <body>
 
-<header>
-<h2>Sistema de Vigilância - Segurança Institucional</h2>
-</header>
-
 <div class="container" id="login">
-<div class="card">
 <h3>Login</h3>
-<input id="user" placeholder="Usuário">
-<input id="pass" type="password" placeholder="Senha">
-<br>
-<button onclick="login()">Entrar</button>
-</div>
+<input id="email" placeholder="Email">
+<input id="senha" type="password" placeholder="Senha">
+<button onclick="logar()">Entrar</button>
+<button onclick="registrar()">Criar Conta</button>
 </div>
 
 <div class="container hidden" id="sistema">
-
-<div class="card" id="cadastroBox">
-<h3>Cadastro de Vigilantes</h3>
+<h3>Cadastro</h3>
 
 <input id="cidade" placeholder="Cidade">
-<input id="nucleo" placeholder="Núcleo">
-<input id="contrato" placeholder="Contrato">
-<input id="empresa" placeholder="Empresa">
 <input id="nome" placeholder="Vigilante">
 <input id="telefone" placeholder="Telefone">
-<br>
+
 <button onclick="salvar()">Salvar</button>
-</div>
 
-<div class="card">
-<h3>Consulta</h3>
-<input id="busca" placeholder="Buscar vigilante ou cidade" onkeyup="filtrar()">
-
+<h3>Dados</h3>
 <table>
 <thead>
 <tr>
 <th>Cidade</th>
-<th>Núcleo</th>
-<th>Contrato</th>
-<th>Empresa</th>
-<th>Vigilante</th>
-<th>Contato</th>
-<th>Ações</th>
+<th>Nome</th>
+<th>Telefone</th>
 </tr>
 </thead>
 <tbody id="tabela"></tbody>
 </table>
-</div>
 
+<button onclick="logout()">Sair</button>
 </div>
 
 <script>
-const usuarios = [
-  {user:'admin', pass:'123', tipo:'admin'},
-  {user:'consulta', pass:'123', tipo:'consulta'}
-];
+const firebaseConfig = {
+  apiKey: "AIzaSyBAARdjzSUNEjs9_fSiDtnXu9LzOnVpLzQ",
+  authDomain: "controle-vigilantes.firebaseapp.com",
+  projectId: "controle-vigilantes",
+  storageBucket: "controle-vigilantes.firebasestorage.app",
+  messagingSenderId: "97498390450",
+  appId: "1:97498390450:web:6867a8e74dc40787ab8eab"
+};
 
-let tipoAcesso = '';
-let editIndex = null;
+firebase.initializeApp(firebaseConfig);
 
-function login(){
-  let u = user.value;
-  let p = pass.value;
+const auth = firebase.auth();
+const db = firebase.firestore();
 
-  let achou = usuarios.find(x => x.user===u && x.pass===p);
+// REGISTRAR
+function registrar(){
+  auth.createUserWithEmailAndPassword(email.value, senha.value)
+  .then(()=>alert('Usuário criado'))
+  .catch(e=>alert(e.message));
+}
 
-  if(achou){
-    tipoAcesso = achou.tipo;
+// LOGIN
+function logar(){
+  auth.signInWithEmailAndPassword(email.value, senha.value)
+  .catch(e=>alert(e.message));
+}
+
+// CONTROLE DE SESSÃO
+auth.onAuthStateChanged(user => {
+  if(user){
     login.style.display='none';
     sistema.classList.remove('hidden');
-
-    if(tipoAcesso === 'consulta'){
-      cadastroBox.style.display='none';
-    }
-
     carregar();
-  } else {
-    alert('Login inválido');
   }
-}
+});
 
+// SALVAR DADOS
 function salvar(){
-  let dados = JSON.parse(localStorage.getItem('dados')) || [];
-
-  let novo = {
+  db.collection("vigilantes").add({
     cidade: cidade.value,
-    nucleo: nucleo.value,
-    contrato: contrato.value,
-    empresa: empresa.value,
     nome: nome.value,
     telefone: telefone.value
-  };
-
-  if(editIndex !== null){
-    dados[editIndex] = novo;
-    editIndex = null;
-  } else {
-    dados.push(novo);
-  }
-
-  localStorage.setItem('dados', JSON.stringify(dados));
-
-  limpar();
-  carregar();
+  });
 }
 
+// CARREGAR DADOS EM TEMPO REAL
 function carregar(){
-  let dados = JSON.parse(localStorage.getItem('dados')) || [];
-  tabela.innerHTML='';
-
-  dados.forEach((d, i) => {
-    tabela.innerHTML += `<tr>
-      <td>${d.cidade}</td>
-      <td>${d.nucleo}</td>
-      <td>${d.contrato}</td>
-      <td>${d.empresa}</td>
-      <td>${d.nome}</td>
-      <td><a href='tel:${d.telefone}'>${d.telefone}</a></td>
-      <td class='actions'>
-        ${tipoAcesso === 'admin' ? `
-        <button onclick="editar(${i})">Editar</button>
-        <button onclick="excluir(${i})">Excluir</button>
-        ` : ''}
-      </td>
-    </tr>`;
+  db.collection("vigilantes").onSnapshot(snapshot => {
+    tabela.innerHTML='';
+    snapshot.forEach(doc => {
+      let d = doc.data();
+      tabela.innerHTML += `
+        <tr>
+        <td>${d.cidade}</td>
+        <td>${d.nome}</td>
+        <td>${d.telefone}</td>
+        </tr>`;
+    });
   });
 }
 
-function editar(i){
-  let dados = JSON.parse(localStorage.getItem('dados'));
-  let d = dados[i];
-
-  cidade.value = d.cidade;
-  nucleo.value = d.nucleo;
-  contrato.value = d.contrato;
-  empresa.value = d.empresa;
-  nome.value = d.nome;
-  telefone.value = d.telefone;
-
-  editIndex = i;
-}
-
-function excluir(i){
-  if(confirm('Deseja excluir?')){
-    let dados = JSON.parse(localStorage.getItem('dados'));
-    dados.splice(i,1);
-    localStorage.setItem('dados', JSON.stringify(dados));
-    carregar();
-  }
-}
-
-function limpar(){
-  cidade.value='';
-  nucleo.value='';
-  contrato.value='';
-  empresa.value='';
-  nome.value='';
-  telefone.value='';
-}
-
-function filtrar(){
-  let valor = busca.value.toLowerCase();
-  let linhas = document.querySelectorAll('#tabela tr');
-
-  linhas.forEach(l => {
-    l.style.display = l.innerText.toLowerCase().includes(valor) ? '' : 'none';
-  });
+// LOGOUT
+function logout(){
+  auth.signOut();
+  location.reload();
 }
 </script>
 
